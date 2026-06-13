@@ -34,14 +34,21 @@ jobs:
       - name: Configure Kernel
         run: |
           cd linux-source
-          # Use the default configuration layout for standard x86 systems
-          make defconfig
+          # Use the exact configuration from your working laptop!
+          cp ../my-laptop-config.txt .config
+          
+          # Adapt the Ubuntu config to the mainline source tree safely
+          make olddefconfig
+          
           # Disable heavy debug details to keep the compilation within GitHub's free limits
           scripts/config --disable DEBUG_INFO
           scripts/config --disable DEBUG_INFO_BTF
+          
           # Prevent signing errors
           scripts/config --set-str SYSTEM_TRUSTED_KEYS ""
           scripts/config --set-str SYSTEM_REVOCATION_KEYS ""
+          
+          # Apply the changes safely
           make olddefconfig
           
       - name: Build Kernel (deb packages)
