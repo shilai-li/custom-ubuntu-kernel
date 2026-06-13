@@ -1,4 +1,4 @@
- name: Build Custom Kernel
+name: Build Custom Kernel
 on:
   push:
     branches: [ main ]
