@@ -47,7 +47,10 @@ jobs:
       - name: Build Kernel (deb packages)
         run: |
           cd linux-source
-          make -j$(nproc) bindeb-pkg LOCALVERSION=-customkbd
+          # 1. Compile everything using all available CPU cores safely
+          make -j$(nproc) LOCALVERSION=-customkbd
+          # 2. Package it into .deb files single-threaded to prevent parallel collisions
+          DEB_BUILD_OPTIONS=parallel=1 make bindeb-pkg LOCALVERSION=-customkbd
           
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
