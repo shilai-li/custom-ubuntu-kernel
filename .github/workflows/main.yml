@@ -14,16 +14,14 @@ jobs:
       - name: Install Build Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential libncurses-dev bison flex libssl-dev libelf-dev dpkg-dev bc rsync kmod cpio debhelper
+          sudo apt-get install -y build-essential libncurses-dev bison flex libssl-dev libelf-dev dpkg-dev bc rsync kmod cpio debhelper dwarves zstd lz4 pkg-config
 
       - name: Download Kernel Source
         run: |
-          # 1. Enable source repositories for the newest Ubuntu 24.04 runner format
+          # Use the latest Ubuntu kernel source format
           sudo sed -i 's/Types: deb/Types: deb deb-src/g' /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
           sudo sed -i 's/^#\s*deb-src/deb-src/' /etc/apt/sources.list 2>/dev/null || true
           sudo apt-get update
-          
-          # 2. Download the standard generic Linux kernel source (not the cloud runner kernel)
           apt-get source linux
           
       - name: Apply Patch
@@ -37,10 +35,15 @@ jobs:
         run: |
           cd linux-*
           cp /boot/config-$(uname -r) .config
-          yes "" | make oldconfig
+          make olddefconfig
           # Disable debug info to massively speed up build time and reduce file size
           scripts/config --disable DEBUG_INFO
           scripts/config --disable DEBUG_INFO_BTF
+          # Clear official Ubuntu security keys so it doesn't fail trying to sign the kernel
+          scripts/config --set-str SYSTEM_TRUSTED_KEYS ""
+          scripts/config --set-str SYSTEM_REVOCATION_KEYS ""
+          # Apply the config changes safely
+          make olddefconfig
           
       - name: Build Kernel (deb packages)
         run: |
