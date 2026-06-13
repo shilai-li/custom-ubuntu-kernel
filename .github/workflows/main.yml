@@ -1,4 +1,4 @@
-name: Build Custom Kernel
+name: Build Custom Kernel 7.0
 on:
   push:
     branches: [ main ]
@@ -14,40 +14,39 @@ jobs:
       - name: Install Build Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential libncurses-dev bison flex libssl-dev libelf-dev dpkg-dev bc rsync kmod cpio debhelper dwarves zstd lz4 pkg-config
+          sudo apt-get install -y build-essential libncurses-dev bison flex libssl-dev libelf-dev dpkg-dev bc rsync kmod cpio debhelper dwarves zstd lz4 pkg-config wget
 
-      - name: Download Kernel Source
+      - name: Download Mainline Kernel 7.0 Source
         run: |
-          # Use the latest Ubuntu kernel source format
-          sudo sed -i 's/Types: deb/Types: deb deb-src/g' /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
-          sudo sed -i 's/^#\s*deb-src/deb-src/' /etc/apt/sources.list 2>/dev/null || true
-          sudo apt-get update
-          apt-get source linux
+          # Download the stable 7.0 Linux kernel source directly from kernel.org
+          wget https://cdn.kernel.org/pub/linux/kernel/v7.x/linux-7.0.tar.xz
+          tar -xf linux-7.0.tar.xz
+          # Rename the directory to linux-source so the remaining steps match flawlessly
+          mv linux-7.0 linux-source
           
       - name: Apply Patch
         run: |
-          cd linux-*
+          cd linux-source
           patch -p1 < ../keyboard.patch
           echo "=== VERIFYING INJECTION ==="
           grep -C 5 "XWC-P" drivers/input/keyboard/atkbd.c
           
       - name: Configure Kernel
         run: |
-          cd linux-*
-          cp /boot/config-$(uname -r) .config
-          make olddefconfig
-          # Disable debug info to massively speed up build time and reduce file size
+          cd linux-source
+          # Use the default configuration layout for standard x86 systems
+          make defconfig
+          # Disable heavy debug details to keep the compilation within GitHub's free limits
           scripts/config --disable DEBUG_INFO
           scripts/config --disable DEBUG_INFO_BTF
-          # Clear official Ubuntu security keys so it doesn't fail trying to sign the kernel
+          # Prevent signing errors
           scripts/config --set-str SYSTEM_TRUSTED_KEYS ""
           scripts/config --set-str SYSTEM_REVOCATION_KEYS ""
-          # Apply the config changes safely
           make olddefconfig
           
       - name: Build Kernel (deb packages)
         run: |
-          cd linux-*
+          cd linux-source
           make -j$(nproc) bindeb-pkg LOCALVERSION=-customkbd
           
       - name: Upload Artifacts
